@@ -1,0 +1,65 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- 폭발 트리거 이벤트 생성
+local triggerExplosionEvent = Instance.new("RemoteEvent")
+triggerExplosionEvent.Name = "TriggerExplosion"
+triggerExplosionEvent.Parent = ReplicatedStorage
+
+-- 폭발 효과와 오디오를 트리거하는 함수
+local function triggerExplosion(executor)
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= executor then
+            local character = player.Character
+            if character and character:FindFirstChild("Humanoid") and character:FindFirstChild("Head") then
+                local head = character.Head
+                
+                -- 폭발 생성
+                local explosion = Instance.new("Explosion")
+                explosion.Position = head.Position
+                explosion.BlastRadius = 10
+                explosion.BlastPressure = 5000
+                explosion.DestroyJointRadiusPercent = 1
+                explosion.Parent = workspace
+                
+                -- 폭발 효과
+                explosion.Hit:Connect(function(hit)
+                    local hitParent = hit.Parent
+                    if hitParent and hitParent:FindFirstChild("Humanoid") then
+                        local targetHumanoid = hitParent.Humanoid
+                        targetHumanoid:TakeDamage(100)
+                    end
+                end)
+
+                -- 오디오 추가 및 재생
+                local sound = Instance.new("Sound")
+                sound.SoundId = "rbxassetid://9064887432"
+                sound.Volume = 5
+                sound.PlayOnRemove = true
+                sound.Parent = head
+                sound:Play()
+
+                -- 폭발이 플레이어를 따라다니게 설정
+                local followExplosion = true
+                coroutine.wrap(function()
+                    while followExplosion do
+                        explosion.Position = head.Position
+                        wait(0.1)
+                    end
+                end)()
+
+                -- 일정 시간 후 폭발 멈추기
+                task.delay(5, function()
+                    followExplosion = false
+                    explosion:Destroy()
+                    sound:Destroy()
+                end)
+            end
+        end
+    end
+end
+
+-- 이벤트 실행 시 폭발 트리거
+triggerExplosionEvent.OnServerEvent:Connect(function(player)
+    triggerExplosion(player)
+end)
